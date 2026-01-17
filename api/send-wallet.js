@@ -5,7 +5,6 @@ export default async function handler(req, res) {
 
   const { wallet } = req.body;
 
-  // ВСТАВЬ СЮДА СВОИ ДАННЫЕ ИЛИ ИСПОЛЬЗУЙ ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ VERCEL
   const BOT_TOKEN = process.env.TG_BOT_TOKEN;
   const CHAT_ID = process.env.TG_CHAT_ID;
 

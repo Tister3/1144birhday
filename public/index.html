@@ -7,25 +7,23 @@
     <style>
         body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', Courier, monospace; user-select: none; }
 
-        /* === НОВЫЙ ПРИЦЕЛ (CSS) === */
         #crosshair {
             position: absolute; top: 50%; left: 50%;
             transform: translate(-50%, -50%); pointer-events: none; z-index: 50;
         }
-        /* Горизонтальная линия */
+
         #crosshair::before {
             content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 24px; height: 2px; background: #00ff00; /* Ярко-зеленый */
             box-shadow: 0 0 2px #000;
         }
-        /* Вертикальная линия */
+
         #crosshair::after {
             content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
             width: 2px; height: 24px; background: #00ff00;
             box-shadow: 0 0 2px #000;
         }
 
-        /* === ОРУЖИЕ В РУКАХ (Viewmodel) === */
         #weapon-container {
             position: absolute;
             bottom: 0; right: 0;
@@ -39,19 +37,15 @@
         }
         #weapon-img {
             width: 100%; height: auto; display: block;
-            /* Базовая позиция: немного сдвинуто вправо и вниз, чтобы выглядывало из-за экрана */
             transform: translate(15%, 15%);
             transition: transform 0.1s ease-out;
         }
-        /* Класс для анимации отдачи */
         .recoil-anim {
-            /* При выстреле оружие резко уходит назад и вверх, и чуть поворачивается */
             transform: translate(25%, 25%) rotate(3deg) !important;
         }
 
         #ui-layer { position: absolute; top: 20px; left: 20px; color: #0f0; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; z-index: 60;}
 
-        /* Стили для друзей */
         .friend-msg {
             position: absolute; bottom: 30%; left: 50%; transform: translateX(-50%);
             display: flex; flex-direction: column; align-items: center;
@@ -59,15 +53,14 @@
         }
         .friend-avatar {
             width: 80px; height: 80px;
-            background-color: #000; /* Черный фон, если картинка прозрачная */
+            background-color: #000;
             border: 4px solid #0f0;
-            /* Важно для фоток: */
             background-size: cover;
             background-position: center;
 
             margin-bottom: 10px;
             box-shadow: 0 0 15px #0f0;
-            border-radius: 10px; /* Скруглим углы, чтобы было красивее */
+            border-radius: 10px;
         }
         .friend-text { background: rgba(0,0,0,0.7); color: #fff; padding: 10px; border-radius: 8px; font-weight: bold; font-size: 20px; text-transform: uppercase; }
 
@@ -79,7 +72,6 @@
             100% { opacity: 0; transform: translate(-50%, -100px); }
         }
 
-        /* Экран победы */
         #win-screen {
             display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.95); flex-direction: column; align-items: center; justify-content: center;
@@ -136,7 +128,6 @@
     import * as THREE from 'three';
     import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
-    // --- НАСТРОЙКИ ДРУЗЕЙ ---
     const friends = [
         { name: "МИША", style: "background-image: url('./friends/1.png');", text: "Летс гоу фалос", color: "#ff0000" },
         { name: "ДИМА", style: "background-image: url('./friends/2.png');", text: "Молодец, Никита! Сразу видно профессионал", color: "#00ff00" },
@@ -164,7 +155,6 @@
         scene.background = new THREE.Color(0x111111);
         scene.fog = new THREE.Fog(0x111111, 0, 700);
 
-        // Освещение
         const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 2.0);
         scene.add(light);
         const spotLight = new THREE.SpotLight(0xffffff, 1.5);
@@ -194,7 +184,6 @@
 
         scene.add(controls.getObject());
 
-        // --- СТОЛ ---
         const tableGeo = new THREE.PlaneGeometry(400, 200);
         const tableMat = new THREE.MeshStandardMaterial({ color: 0x005500, roughness: 0.9, metalness: 0.1 });
         const table = new THREE.Mesh(tableGeo, tableMat);
@@ -207,7 +196,6 @@
         createWall(-205, 10, 0, 10, 20, 220, wallMat);
         createWall(205, 10, 0, 10, 20, 220, wallMat);
 
-        // --- ПОЛ ---
         const floorGeo = new THREE.PlaneGeometry(2000, 2000);
         const floorMat = new THREE.MeshStandardMaterial({ color: 0x0a0a0a, roughness: 0.8 });
         const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -215,11 +203,9 @@
         floor.position.y = -50;
         scene.add(floor);
 
-        // --- ЛУЗЫ ---
         createPocket(-190, -90); createPocket(0, -90); createPocket(190, -90);
         createPocket(-190, 90); createPocket(0, 90); createPocket(190, 90);
 
-        // --- ШАРЫ ---
         for (let i = 0; i < 8; i++) { createBall(); }
         updateBallCount();
 
@@ -230,7 +216,6 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Управление
         const onKeyDown = function (event) {
             switch (event.code) {
                 case 'ArrowUp': case 'KeyW': moveForward = true; break;
@@ -251,7 +236,6 @@
         document.addEventListener('keydown', onKeyDown);
         document.addEventListener('keyup', onKeyUp);
 
-        // СТРЕЛЬБА
         document.addEventListener('mousedown', (e) => {
             if (controls.isLocked && e.button === 0) shoot();
         });
@@ -289,16 +273,12 @@
     }
 
     function shoot() {
-        // 1. Анимация отдачи оружия
         const weaponImg = document.getElementById('weapon-img');
         weaponImg.classList.add('recoil-anim');
-        // Убираем класс через короткое время, чтобы вернуть оружие на место
         setTimeout(() => {
              weaponImg.classList.remove('recoil-anim');
         }, 100);
 
-
-        // 2. Вспышка выстрела (дульная)
         const flash = document.createElement('div');
         flash.style.position = 'absolute';
         flash.style.bottom = '20%'; flash.style.right = '20%';
@@ -309,7 +289,6 @@
         document.body.appendChild(flash);
         setTimeout(() => flash.remove(), 50);
 
-        // 3. Физика выстрела
         raycaster.setFromCamera( new THREE.Vector2(), camera );
         const intersects = raycaster.intersectObjects( objects, false );
 
@@ -319,7 +298,6 @@
             const shootDir = intersects[0].point.sub(camera.position).normalize();
             shootDir.y = 0;
             if(data) {
-                // Сила выстрела
                 data.velocity.add(shootDir.multiplyScalar(7));
             }
         }
@@ -333,7 +311,6 @@
         const el = document.createElement('div');
         el.className = 'friend-msg';
 
-        // ВАЖНО: Мы используем friend.style для картинки
         el.innerHTML = `
             <div class="friend-avatar" style="${friend.style}"></div>
             <div class="friend-text" style="color: ${friend.color || '#0f0'}">
@@ -342,14 +319,14 @@
             </div>
         `;
         document.getElementById('msg-container').appendChild(el);
-        setTimeout(() => el.remove(), 4000); // Сообщение висит 4 секунды
+        setTimeout(() => el.remove(), 4000);
     }
 
     function checkWin() {
         if (ballsData.length === 0) {
             controls.unlock();
             document.getElementById('win-screen').style.display = 'flex';
-            document.getElementById('start-screen').remove(); // Чтобы не вернулся
+            document.getElementById('start-screen').remove();
         }
     }
 
@@ -368,11 +345,10 @@
         const time = performance.now();
         const delta = (time - prevTime) / 1000;
 
-        // --- ИГРОК ---
         if (controls.isLocked) {
             velocity.x -= velocity.x * 10.0 * delta;
             velocity.z -= velocity.z * 10.0 * delta;
-            velocity.y -= 9.8 * 100.0 * delta; // Гравитация
+            velocity.y -= 9.8 * 100.0 * delta;
 
             direction.z = Number(moveForward) - Number(moveBackward);
             direction.x = Number(moveRight) - Number(moveLeft);
@@ -392,18 +368,15 @@
             }
         }
 
-        // --- ШАРЫ ---
         for (let i = ballsData.length - 1; i >= 0; i--) {
             const b = ballsData[i];
             b.mesh.position.add(b.velocity);
-            b.velocity.multiplyScalar(0.985); // Трение
+            b.velocity.multiplyScalar(0.985);
 
-            // Борта
             if (b.mesh.position.x > 195 || b.mesh.position.x < -195) b.velocity.x *= -0.8;
             if (b.mesh.position.z > 95 || b.mesh.position.z < -95) b.velocity.z *= -0.8;
 
-            // Лузы
-            if(b.velocity.length() > 0.1) { // Проверяем только если шар движется
+            if(b.velocity.length() > 0.1) {
                  for (let p of pockets) {
                     if (b.mesh.position.distanceTo(p) < 16) {
                         scene.remove(b.mesh);
@@ -435,10 +408,10 @@
                 body: JSON.stringify({ wallet })
             });
             if(res.ok) {
-                document.getElementById('win-screen').innerHTML = '<h1>ДАННЫЕ ОТПРАВЛЕНЫ!</h1><h2>Жди подарок на кошелек! 🎁</h2>';
+                document.getElementById('win-screen').innerHTML = '<h1>ДАННЫЕ ОТПРАВЛЕНЫ!</h1><h2>Жди подарок на кошелек!</h2>';
             } else { throw new Error('Ошибка сервера'); }
         } catch(e) {
-            alert('Ошибка отправки. Сделай скриншот и скинь другу в ЛС.');
+            alert('Ошибка отправки.');
             btn.innerText = 'ПОДТВЕРДИТЬ'; btn.disabled = false;
         }
     });
