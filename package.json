@@ -5,6 +5,7 @@
     "start": "serve public"
   },
   "dependencies": {
-    "three": "^0.160.0"
+    "three": "^0.160.0",
+    "serve": "^14.2.1"
   }
 }
