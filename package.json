@@ -1,0 +1,10 @@
+{
+  "name": "birthday-pool-cs",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "serve public"
+  },
+  "dependencies": {
+    "three": "^0.160.0"
+  }
+}

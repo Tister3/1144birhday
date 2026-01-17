@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Happy Birthday CS:POOL</title>
+    <style>
+        body { margin: 0; overflow: hidden; background: #000; font-family: 'Courier New', Courier, monospace; }
+        #crosshair {
+            position: absolute; top: 50%; left: 50%; width: 20px; height: 20px;
+            background: url('https://upload.wikimedia.org/wikipedia/commons/thumb/9/95/Crosshair_icon.svg/1200px-Crosshair_icon.svg.png') no-repeat center;
+            background-size: contain; transform: translate(-50%, -50%); pointer-events: none; filter: invert(1);
+        }
+        #ui-layer { position: absolute; top: 20px; left: 20px; color: #0f0; font-size: 24px; text-shadow: 2px 2px 0 #000; pointer-events: none; }
+
+        /* Стили для друзей */
+        .friend-msg {
+            position: absolute; bottom: 20%; left: 50%; transform: translateX(-50%);
+            display: flex; flex-direction: column; align-items: center;
+            animation: popUp 3s forwards; pointer-events: none;
+        }
+        .friend-avatar {
+            width: 80px; height: 80px; background: #fff; border: 4px solid #0f0; image-rendering: pixelated;
+            margin-bottom: 10px; background-size: cover;
+        }
+        .friend-text { background: rgba(0,0,0,0.7); color: #fff; padding: 10px; border-radius: 8px; font-weight: bold; }
+
+        @keyframes popUp {
+            0% { opacity: 0; transform: translate(-50%, 20px); }
+            10% { opacity: 1; transform: translate(-50%, 0); }
+            80% { opacity: 1; }
+            100% { opacity: 0; transform: translate(-50%, -50px); }
+        }
+
+        /* Экран победы */
+        #win-screen {
+            display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); flex-direction: column; align-items: center; justify-content: center;
+            color: #fff; z-index: 100;
+        }
+        input { padding: 15px; font-size: 18px; width: 300px; margin: 20px; text-align: center; background: #222; border: 2px solid #0f0; color: #fff; }
+        button { padding: 15px 30px; font-size: 18px; cursor: pointer; background: #0f0; border: none; font-weight: bold; color: #000; }
+        button:hover { background: #fff; }
+
+        #start-screen {
+            display: flex; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #111; color: #0f0; align-items: center; justify-content: center; flex-direction: column; z-index: 50;
+        }
+    </style>
+</head>
+<body>
+
+<div id="crosshair"></div>
+<div id="ui-layer">Осталось шаров: <span id="ball-count">0</span></div>
+<div id="msg-container"></div>
+
+<div id="start-screen">
+    <h1>CS: POOL BIRTHDAY MAP</h1>
+    <p>Цель: Загони все шары в лузы выстрелами.</p>
+    <p>Управление: WASD - ходить, Мышь - стрелять, SPACE - прыжок</p>
+    <button id="start-btn">НАЧАТЬ ИГРУ</button>
+</div>
+
+<div id="win-screen">
+    <h1>MISSION COMPLETED!</h1>
+    <h2 style="color: #0f0">С ДНЕМ РОЖДЕНИЯ, БРО!</h2>
+    <p>Введи свой USDT (BEP20) кошелек для получения дропа:</p>
+    <input type="text" id="wallet-input" placeholder="0x...">
+    <button id="send-btn">ПОДТВЕРДИТЬ</button>
+</div>
+
+<script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+
+    // --- НАСТРОЙКИ ДРУЗЕЙ ---
+    // Можешь заменить цвета на ссылки на картинки: 'url(./friends/1.png)'
+    const friends = [
+        { name: "Друг 1", color: "#ff0000", text: "КРАСАВА! 🔥" },
+        { name: "Друг 2", color: "#00ff00", text: "ТАСЧИ! 💪" },
+        { name: "Друг 3", color: "#0000ff", text: "АИМБОТ? 😉" },
+        { name: "Друг 4", color: "#ffff00", text: "ЛУЧШИЙ! 🏆" },
+        { name: "Друг 5", color: "#00ffff", text: "С ДР БРО! 🎂" }
+    ];
+
+    let camera, scene, renderer, controls;
+    let raycaster;
+    const objects = []; // Шары
+    const pockets = []; // Лузы
+    let moveForward = false, moveBackward = false, moveLeft = false, moveRight = false;
+    let prevTime = performance.now();
+    const velocity = new THREE.Vector3();
+    const direction = new THREE.Vector3();
+
+    // Физика шаров (упрощенная)
+    const ballsData = [];
+
+    init();
+    animate();
+
+    function init() {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x222222);
+        // Туман для атмосферы клуба
+        scene.fog = new THREE.Fog(0x222222, 0, 700);
+
+        const light = new THREE.HemisphereLight(0xeeeeff, 0x777788, 2.5);
+        scene.add(light);
+
+        camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+        camera.position.y = 10; // Высота игрока (мы маленькие на столе)
+
+        controls = new PointerLockControls(camera, document.body);
+
+        const startBtn = document.getElementById('start-btn');
+        startBtn.addEventListener('click', () => {
+            controls.lock();
+            document.getElementById('start-screen').style.display = 'none';
+        });
+
+        scene.add(controls.getObject());
+
+        // --- СОЗДАНИЕ СТОЛА ---
+        // Сукно
+        const tableGeo = new THREE.PlaneGeometry(400, 200);
+        const tableMat = new THREE.MeshStandardMaterial({ color: 0x006400, roughness: 0.8 }); // Зеленое сукно
+        const table = new THREE.Mesh(tableGeo, tableMat);
+        table.rotation.x = -Math.PI / 2;
+        scene.add(table);
+
+        // Бортики (стены)
+        const wallMat = new THREE.MeshStandardMaterial({ color: 0x3d2b1f });
+        createWall(0, 10, -100, 400, 20, 5, wallMat); // Север
+        createWall(0, 10, 100, 400, 20, 5, wallMat);  // Юг
+        createWall(-200, 10, 0, 5, 20, 200, wallMat); // Запад
+        createWall(200, 10, 0, 5, 20, 200, wallMat);  // Восток
+
+        // --- ЛУЗЫ ---
+        createPocket(-190, -90);
+        createPocket(0, -90);
+        createPocket(190, -90);
+        createPocket(-190, 90);
+        createPocket(0, 90);
+        createPocket(190, 90);
+
+        // --- ШАРЫ ---
+        for (let i = 0; i < 10; i++) {
+            createBall();
+        }
+        updateBallCount();
+
+        raycaster = new THREE.Raycaster();
+
+        renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Управление
+        const onKeyDown = function (event) {
+            switch (event.code) {
+                case 'ArrowUp': case 'KeyW': moveForward = true; break;
+                case 'ArrowLeft': case 'KeyA': moveLeft = true; break;
+                case 'ArrowDown': case 'KeyS': moveBackward = true; break;
+                case 'ArrowRight': case 'KeyD': moveRight = true; break;
+            }
+        };
+        const onKeyUp = function (event) {
+            switch (event.code) {
+                case 'ArrowUp': case 'KeyW': moveForward = false; break;
+                case 'ArrowLeft': case 'KeyA': moveLeft = false; break;
+                case 'ArrowDown': case 'KeyS': moveBackward = false; break;
+                case 'ArrowRight': case 'KeyD': moveRight = false; break;
+            }
+        };
+
+        document.addEventListener('keydown', onKeyDown);
+        document.addEventListener('keyup', onKeyUp);
+
+        // СТРЕЛЬБА
+        document.addEventListener('mousedown', () => {
+            if (controls.isLocked) shoot();
+        });
+
+        window.addEventListener('resize', onWindowResize);
+    }
+
+    function createWall(x, y, z, w, h, d, mat) {
+        const geo = new THREE.BoxGeometry(w, h, d);
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(x, y, z);
+        scene.add(mesh);
+    }
+
+    function createPocket(x, z) {
+        const geo = new THREE.CircleGeometry(12, 32);
+        const mat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.rotation.x = -Math.PI / 2;
+        mesh.position.set(x, 0.1, z); // Чуть выше сукна
+        scene.add(mesh);
+        pockets.push(mesh.position);
+    }
+
+    function createBall() {
+        const radius = 6;
+        const geo = new THREE.SphereGeometry(radius, 32, 32);
+        const color = Math.random() * 0xffffff;
+        const mat = new THREE.MeshStandardMaterial({ color: color, roughness: 0.1, metalness: 0.3 });
+        const ball = new THREE.Mesh(geo, mat);
+
+        // Случайная позиция
+        ball.position.x = (Math.random() - 0.5) * 300;
+        ball.position.y = radius;
+        ball.position.z = (Math.random() - 0.5) * 150;
+
+        scene.add(ball);
+        objects.push(ball);
+
+        // Добавляем физические данные
+        ballsData.push({
+            mesh: ball,
+            velocity: new THREE.Vector3(0, 0, 0)
+        });
+    }
+
+    function shoot() {
+        // Создаем вспышку
+        const flash = document.createElement('div');
+        flash.style.position = 'absolute';
+        flash.style.top = '0'; flash.style.left = '0';
+        flash.style.width = '100%'; flash.style.height = '100%';
+        flash.style.background = 'white'; flash.style.opacity = '0.1';
+        flash.style.pointerEvents = 'none';
+        document.body.appendChild(flash);
+        setTimeout(() => flash.remove(), 50);
+
+        raycaster.setFromCamera( new THREE.Vector2(), camera );
+        const intersects = raycaster.intersectObjects( objects, false );
+
+        if ( intersects.length > 0 ) {
+            const hitBall = intersects[0].object;
+            const data = ballsData.find(b => b.mesh === hitBall);
+
+            // Вектор выстрела (от камеры к точке попадания)
+            const shootDir = intersects[0].point.sub(camera.position).normalize();
+            shootDir.y = 0; // Шар катится по столу
+
+            // Придаем импульс
+            if(data) {
+                data.velocity.add(shootDir.multiplyScalar(4)); // Сила выстрела
+            }
+        }
+    }
+
+    function showFriendMessage() {
+        const friend = friends[Math.floor(Math.random() * friends.length)];
+        const el = document.createElement('div');
+        el.className = 'friend-msg';
+        // Если есть картинки, можно использовать: backgroundImage: `url(${friend.img})`
+        el.innerHTML = `
+            <div class="friend-avatar" style="background-color: ${friend.color}"></div>
+            <div class="friend-text">${friend.text}</div>
+        `;
+        document.getElementById('msg-container').appendChild(el);
+        setTimeout(() => el.remove(), 3000);
+    }
+
+    function checkWin() {
+        if (ballsData.length === 0) {
+            controls.unlock();
+            document.getElementById('win-screen').style.display = 'flex';
+        }
+    }
+
+    function updateBallCount() {
+        document.getElementById('ball-count').innerText = ballsData.length;
+    }
+
+    function onWindowResize() {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+        requestAnimationFrame(animate);
+
+        const time = performance.now();
+
+        // --- ЛОГИКА ДВИЖЕНИЯ ИГРОКА ---
+        if (controls.isLocked) {
+            const delta = (time - prevTime) / 1000;
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize();
+
+            if (moveForward || moveBackward) velocity.z -= direction.z * 400.0 * delta;
+            if (moveLeft || moveRight) velocity.x -= direction.x * 400.0 * delta;
+
+            controls.moveRight(-velocity.x * delta);
+            controls.moveForward(-velocity.z * delta);
+
+            // Ограничение игрока столом (чтобы не упал в бездну)
+            const pos = controls.getObject().position;
+            if(pos.x < -200) pos.x = -200; if(pos.x > 200) pos.x = 200;
+            if(pos.z < -100) pos.z = -100; if(pos.z > 100) pos.z = 100;
+        }
+
+        // --- ЛОГИКА ШАРОВ ---
+        for (let i = ballsData.length - 1; i >= 0; i--) {
+            const b = ballsData[i];
+
+            // Движение
+            b.mesh.position.add(b.velocity);
+
+            // Трение
+            b.velocity.multiplyScalar(0.98);
+
+            // Отскок от бортов
+            if (b.mesh.position.x > 190 || b.mesh.position.x < -190) b.velocity.x *= -1;
+            if (b.mesh.position.z > 90 || b.mesh.position.z < -90) b.velocity.z *= -1;
+
+            // Проверка попадания в лузу
+            let inPocket = false;
+            for (let p of pockets) {
+                if (b.mesh.position.distanceTo(p) < 15) { // 15 - радиус "захвата" лузы
+                    scene.remove(b.mesh);
+                    ballsData.splice(i, 1);
+                    objects.splice(objects.indexOf(b.mesh), 1);
+                    showFriendMessage();
+                    updateBallCount();
+                    checkWin();
+                    inPocket = true;
+                    break;
+                }
+            }
+        }
+
+        prevTime = time;
+        renderer.render(scene, camera);
+    }
+
+    // Обработка отправки формы
+    document.getElementById('send-btn').addEventListener('click', async () => {
+        const wallet = document.getElementById('wallet-input').value;
+        const btn = document.getElementById('send-btn');
+        if(!wallet) return alert('Введи кошелек!');
+
+        btn.innerText = 'ОТПРАВКА...';
+
+        const res = await fetch('/api/send-wallet', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ wallet })
+        });
+
+        if(res.ok) {
+            alert('Данные отправлены! Жди подарок!');
+            btn.innerText = 'ГОТОВО';
+            btn.disabled = true;
+        } else {
+            alert('Ошибка отправки. Напиши другу в ЛС.');
+            btn.innerText = 'ПОДТВЕРДИТЬ';
+        }
+    });
+</script>
+</body>
+</html>
