@@ -139,6 +139,8 @@
         { name: "МИША", style: "background-image: url('./friends/1.png');", text: "КИСИ КИСИ МЯУ МЯУ", color: "#ff00ff" }
     ];
 
+    let availableMessages = [...friends];
+
     let camera, scene, renderer, controls;
     let raycaster;
     const objects = [];
@@ -306,9 +308,17 @@
     }
 
     function showFriendMessage() {
-        if(friends.length === 0) return;
-        const friendIndex = Math.floor(Math.random() * friends.length);
-        const friend = friends[friendIndex];
+        // Если сообщения кончились (забил больше шаров, чем фраз), наполняем заново
+        if (availableMessages.length === 0) {
+            availableMessages = [...friends];
+        }
+
+        // Выбираем случайный индекс из ОСТАВШИХСЯ
+        const randomIndex = Math.floor(Math.random() * availableMessages.length);
+
+        // Вырезаем (splice) сообщение из массива, чтобы оно не повторилось
+        // splice возвращает массив, поэтому берем [0] элемент
+        const friend = availableMessages.splice(randomIndex, 1)[0];
 
         const el = document.createElement('div');
         el.className = 'friend-msg';
@@ -320,6 +330,7 @@
                 ${friend.text}
             </div>
         `;
+
         document.getElementById('msg-container').appendChild(el);
         setTimeout(() => el.remove(), 4000);
     }
