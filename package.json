@@ -1,7 +1,11 @@
 {
-  "name": "birthday-pool",
+  "name": "birthday-pool-cs",
   "version": "1.0.0",
-  "engines": {
-    "node": "18.x"
+  "scripts": {
+    "start": "serve public"
+  },
+  "dependencies": {
+    "three": "^0.160.0",
+    "serve": "^14.2.1"
   }
 }
